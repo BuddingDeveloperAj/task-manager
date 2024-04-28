@@ -1,145 +1,117 @@
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Task from '../../components/Task';
-
-const Board = {
-    backlog: {
-        name: 'Backlog',
-        column_color: '#D1F2EB',
-        items: [
-            {
-                id: '1',
-                title: 'Admin Panel Front-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'medium',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-            {
-                id: '2',
-                title: 'Admin Panel Back-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'low',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-        ],
-    },
-    pending: {
-        name: 'Pending',
-        column_color: '#F9E79F',
-        items: [
-            {
-                id: '3',
-                title: 'Admin Panel Back-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'high',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-            {
-                id: '4',
-                title: 'Admin Panel Front-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'low',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-            {
-                id: '5',
-                title: 'Admin Panel Front-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'low',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-            {
-                id: '6',
-                title: 'Admin Panel Front-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'low',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-            {
-                id: '7',
-                title: 'Admin Panel Front-end',
-                description: 'Lorem ipsum dolor sit amet ..',
-                priority: 'low',
-                deadline: 50,
-                tags: [
-                    { title: 'Test', color: '#ff0000' },
-                    { title: 'Front', color: '#00ff00' },
-                ],
-            },
-        ],
-    },
-};
+import axios from 'axios';
+import onDragEndFunction from '../../utils/onDragEndFunction';
+import config from '../../configs/static/index';
+import { toast } from 'react-toastify';
+import CreateTask from '../../components/modal/CreateTask';
 
 const Home = () => {
-    const [columns, setColumns] = useState(Board);
+    const [columns, setColumns] = useState([]);
     const [selectedColumn, setSelectedColumn] = useState('');
+    const [isTaskModalOpen, setTaskModal] = useState(false);
+    const [permissions, setPermissions] = useState(false);
+    const [token, setToken] = useState('');
 
-    const openModal = (columnId) => {
-        setSelectedColumn(columnId);
-        setModalOpen(true);
-    };
+    async function getStatuses(token) {
+        try {
+            let req_config = {
+                method: 'get',
+                url: config.URL + '/statuses',
+                headers: {
+                    authorization: `Bearer ${token}`,
+                },
+            };
 
-    const onDragEnd = (result) => console.log(result);
+            const response = await axios(req_config);
+            setColumns(response.data.data);
+        } catch (error) {
+            console.log(error);
+            toast.error(`${error.response.data.message}`, {
+                position: 'bottom-right',
+                autoClose: 5000,
+                draggable: true,
+                theme: 'light',
+            });
+        }
+    }
+
+    useEffect(() => {
+        let token_id = localStorage.getItem('token');
+        setToken(token_id);
+
+        getStatuses(token_id);
+
+        let rawPermissions = localStorage.getItem('permissions');
+        let permissions = JSON.parse(rawPermissions);
+
+        setPermissions(permissions);
+    }, []);
 
     return (
-        <div className="w-[100%]">
+        <div className="h-full w-full">
             <DragDropContext
-                onDragEnd={(result) => onDragEnd(result, columns, setColumns)}
+                onDragEnd={(result) =>
+                    onDragEndFunction(
+                        result,
+                        token,
+                        getStatuses,
+                        columns,
+                        setColumns
+                    )
+                }
             >
-                <div className="w-full flex items-start px-5 py-3 gap-5">
-                    {Object.entries(columns).map(([columnId, column]) => (
+                <div className="flex items-start px-5 py-3 gap-5 w-full overflow-x-auto">
+                    {columns.map((column) => (
                         <div
-                            className="flex flex-col rounded-lg p-2 container-with-scrollbar"
-                            key={columnId}
-                            style={{ backgroundColor: column.column_color }}
+                            className="flex max-h-[90vh] flex-col rounded-lg p-2 container-with-scrollbar"
+                            key={column._id}
+                            style={{ backgroundColor: column.board_color }}
                         >
                             <div className="flex items-center justify-center py-2 my-2 w-full bg-white rounded-lg shadow-sm text-gray-600 font-medium">
                                 {column.name}
                             </div>
-                            <Droppable droppableId={columnId} key={columnId}>
+                            <Droppable
+                                droppableId={column._id}
+                                key={column._id}
+                            >
                                 {(provided) => (
                                     <div
                                         ref={provided.innerRef}
                                         {...provided.droppableProps}
-                                        className="flex flex-col h-[70vh] overflow-y-auto w-[290px] gap-3 p-2 items-center"
+                                        className="flex flex-col overflow-y-scroll h-[68vh] w-[290px] gap-3 p-2 items-center"
                                     >
-                                        {column.items.map((task, index) => (
+                                        {column.tasks.map((task, index) => (
                                             <Draggable
-                                                key={task.id.toString()}
-                                                draggableId={task.id.toString()}
+                                                key={task._id}
+                                                isDragDisabled={
+                                                    permissions.findIndex(
+                                                        (perm) =>
+                                                            perm.type ===
+                                                                'TASK' &&
+                                                            perm.action ===
+                                                                'STATUS_UPDATE'
+                                                    ) < 0
+                                                }
+                                                draggableId={task._id}
                                                 index={index}
                                             >
                                                 {(provided) => (
-                                                    <>
+                                                    <div className="w-full">
                                                         <Task
                                                             provided={provided}
                                                             task={task}
+                                                            permissions={
+                                                                permissions
+                                                            }
+                                                            token={token}
+                                                            getStatuses={
+                                                                getStatuses
+                                                            }
+                                                            columns={columns}
                                                         />
-                                                    </>
+                                                    </div>
                                                 )}
                                             </Draggable>
                                         ))}
@@ -148,7 +120,10 @@ const Home = () => {
                                 )}
                             </Droppable>
                             <div
-                                onClick={() => openModal(columnId)}
+                                onClick={() => {
+                                    setTaskModal(true);
+                                    setSelectedColumn(column._id);
+                                }}
                                 className="flex p-2 mt-4 mb-2 cursor-pointer items-center justify-center opacity-90 bg-white rounded-lg shadow-sm  font-medium"
                             >
                                 Add Task
@@ -157,6 +132,18 @@ const Home = () => {
                     ))}
                 </div>
             </DragDropContext>
+            {isTaskModalOpen && (
+                <CreateTask
+                    setShowModal={setTaskModal}
+                    body={{ status: selectedColumn }}
+                    allStatus={columns.map((col) => ({
+                        _id: col._id,
+                        name: col.name,
+                    }))}
+                    token={token}
+                    getStatuses={getStatuses}
+                />
+            )}
         </div>
     );
 };

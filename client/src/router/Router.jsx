@@ -1,6 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom';
 import Layout from './Layout';
 import Home from '../pages/home';
+import Auth from '../pages/auth';
+import ConfirmationModal from '../components/modal/ConfirmationModal';
 
 const Router = createBrowserRouter([
     {
@@ -12,6 +14,10 @@ const Router = createBrowserRouter([
                 element: <Home />,
             },
         ],
+    },
+    {
+        path: '/auth',
+        element: <Auth />,
     },
 ]);
 
